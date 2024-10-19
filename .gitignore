@@ -1,0 +1,44 @@
+# Binaries
+/gocryptic
+*.exe
+*.dll
+*.so
+*.dylib
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependency directories
+vendor/
+Gopkg.lock
+Gopkg.toml
+
+# Go test output
+*.out
+
+# Go modules
+go.sum
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.log
+
+# Coverage reports
+*.coverprofile
+*.cov
+
+# Docker/Container-related files
+*.dockerfile
+*.container
+
+# Secrets (you should manage secrets carefully, never push to Git)
+*.env
