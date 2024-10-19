@@ -111,8 +111,17 @@ func EncryptDirectory(inputDir, outputDir, key string) error {
 			return err
 		}
 		if !info.IsDir() {
+			// Create the relative path for the output file
 			relativePath, _ := filepath.Rel(inputDir, path)
 			outputPath := filepath.Join(outputDir, relativePath+".enc")
+
+			// Ensure that the output directory exists
+			outputDirPath := filepath.Dir(outputPath)
+			if err := os.MkdirAll(outputDirPath, os.ModePerm); err != nil {
+				return err
+			}
+
+			// Encrypt the file
 			return EncryptFile(path, outputPath, key)
 		}
 		return nil
@@ -126,8 +135,17 @@ func DecryptDirectory(inputDir, outputDir, key string) error {
 			return err
 		}
 		if !info.IsDir() {
+			// Create the relative path for the output file
 			relativePath, _ := filepath.Rel(inputDir, path)
 			outputPath := filepath.Join(outputDir, relativePath+".dec")
+
+			// Ensure that the output directory exists
+			outputDirPath := filepath.Dir(outputPath)
+			if err := os.MkdirAll(outputDirPath, os.ModePerm); err != nil {
+				return err
+			}
+
+			// Decrypt the file
 			return DecryptFile(path, outputPath, key)
 		}
 		return nil

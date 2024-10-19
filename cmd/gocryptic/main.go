@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/JonathanInTheClouds/gocryptic/internal/encryption"
 	"github.com/spf13/cobra"
@@ -25,12 +26,29 @@ func main() {
 				fmt.Println("Please provide input, output, and key")
 				return
 			}
-			// Example of Encrypting a file (more logic to be added)
-			err := encryption.EncryptFile(input, output, key)
+
+			fileInfo, err := os.Stat(input)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
+				return
+			}
+
+			if fileInfo.IsDir() {
+				// Encrypt the entire directory
+				err := encryption.EncryptDirectory(input, output, key)
+				if err != nil {
+					fmt.Printf("Error encrypting directory: %v\n", err)
+				} else {
+					fmt.Println("Directory encryption successful")
+				}
 			} else {
-				fmt.Println("Encryption successful")
+				// Encrypt a single file
+				err := encryption.EncryptFile(input, output, key)
+				if err != nil {
+					fmt.Printf("Error encrypting file: %v\n", err)
+				} else {
+					fmt.Println("File encryption successful")
+				}
 			}
 		},
 	}
@@ -43,11 +61,29 @@ func main() {
 				fmt.Println("Please provide input, output, and key")
 				return
 			}
-			err := encryption.DecryptFile(input, output, key)
+
+			fileInfo, err := os.Stat(input)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
+				return
+			}
+
+			if fileInfo.IsDir() {
+				// Decrypt the entire directory
+				err := encryption.DecryptDirectory(input, output, key)
+				if err != nil {
+					fmt.Printf("Error decrypting directory: %v\n", err)
+				} else {
+					fmt.Println("Directory decryption successful")
+				}
 			} else {
-				fmt.Println("Decryption successful")
+				// Decrypt a single file
+				err := encryption.DecryptFile(input, output, key)
+				if err != nil {
+					fmt.Printf("Error decrypting file: %v\n", err)
+				} else {
+					fmt.Println("File decryption successful")
+				}
 			}
 		},
 	}
