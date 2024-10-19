@@ -27,9 +27,16 @@ curl -L "$DOWNLOAD_URL" -o "$BINARY"
 # Make it executable
 chmod +x "$BINARY"
 
+# Determine if sudo is needed (skip if running as root)
+if [ "$EUID" -ne 0 ]; then
+    SUDO='sudo'
+else
+    SUDO=''
+fi
+
 # Move the binary to the install directory
 echo "Installing $BINARY to $INSTALL_DIR..."
-sudo mv "$BINARY" "$INSTALL_DIR"
+$SUDO mv "$BINARY" "$INSTALL_DIR"
 
 # Verify installation
 if command -v $BINARY &> /dev/null; then
