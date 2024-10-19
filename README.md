@@ -19,7 +19,7 @@ You need to have Golang installed on your machine. You can download it from [her
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/yourusername/gocryptic.git
+   git clone https://github.com/JonathanInTheClouds/gocryptic.git
    ```
 
 2. Navigate to the project directory:
