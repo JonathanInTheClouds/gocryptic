@@ -1,7 +1,6 @@
 package encryption_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -48,8 +47,8 @@ func TestEncryptDecryptFile(t *testing.T) {
 		t.Fatalf("File decryption failed: %v", err)
 	}
 
-	// Read the decrypted content
-	decryptedContent, err := ioutil.ReadFile(decryptedFile.Name())
+	// Read the decrypted content using os.ReadFile
+	decryptedContent, err := os.ReadFile(decryptedFile.Name()) // Use os.ReadFile instead of ioutil.ReadFile
 	if err != nil {
 		t.Fatalf("Failed to read decrypted file: %v", err)
 	}
