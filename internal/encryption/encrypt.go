@@ -111,11 +111,11 @@ func EncryptDirectory(inputDir, outputDir, key string) error {
 			return err
 		}
 		if !info.IsDir() {
-			// Create the relative path for the output file
+			// Get the relative path to maintain the directory structure
 			relativePath, _ := filepath.Rel(inputDir, path)
 			outputPath := filepath.Join(outputDir, relativePath+".enc")
 
-			// Ensure that the output directory exists
+			// Ensure the directory structure is created in the output directory
 			outputDirPath := filepath.Dir(outputPath)
 			if err := os.MkdirAll(outputDirPath, os.ModePerm); err != nil {
 				return err
@@ -135,11 +135,14 @@ func DecryptDirectory(inputDir, outputDir, key string) error {
 			return err
 		}
 		if !info.IsDir() {
-			// Create the relative path for the output file
+			// Remove the .enc extension from the filename before adding .dec
 			relativePath, _ := filepath.Rel(inputDir, path)
-			outputPath := filepath.Join(outputDir, relativePath+".dec")
+			if filepath.Ext(relativePath) == ".enc" {
+				relativePath = relativePath[:len(relativePath)-4] // Remove ".enc"
+			}
+			outputPath := filepath.Join(outputDir, relativePath+".dec") // Add ".dec" extension
 
-			// Ensure that the output directory exists
+			// Ensure the output directory structure exists
 			outputDirPath := filepath.Dir(outputPath)
 			if err := os.MkdirAll(outputDirPath, os.ModePerm); err != nil {
 				return err
