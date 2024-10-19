@@ -1,5 +1,7 @@
 # Binaries
 /gocryptic
+/gocryptic-linux
+/gocryptic-mac
 *.exe
 *.dll
 *.so
