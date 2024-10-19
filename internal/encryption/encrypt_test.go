@@ -100,12 +100,12 @@ func TestEncryptDecryptDirectory(t *testing.T) {
 	}
 
 	// Check if the decrypted files exist and their content matches
-	decryptedFile1, err := ioutil.ReadFile(filepath.Join(decryptedDir, "file1.txt.dec"))
+	decryptedFile1, err := os.ReadFile(filepath.Join(decryptedDir, "file1.txt.dec")) // Use os.ReadFile
 	if err != nil {
 		t.Fatalf("Failed to read decrypted file1: %v", err)
 	}
 
-	decryptedFile2, err := ioutil.ReadFile(filepath.Join(decryptedDir, "file2.txt.dec"))
+	decryptedFile2, err := os.ReadFile(filepath.Join(decryptedDir, "file2.txt.dec")) // Use os.ReadFile
 	if err != nil {
 		t.Fatalf("Failed to read decrypted file2: %v", err)
 	}
