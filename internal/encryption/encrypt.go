@@ -104,6 +104,24 @@ func DecryptFile(inputPath, outputPath, key string) error {
 	return os.WriteFile(outputPath, []byte(decrypted), 0644) // Use os.WriteFile instead of ioutil.WriteFile
 }
 
+// DecryptFileInMemory decrypts a file and prints the content to stdout (in memory) without saving to disk
+func DecryptFileInMemory(inputPath, key string) (string, error) {
+	// Read the file contents
+	content, err := os.ReadFile(inputPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Decrypt the content
+	decrypted, err := Decrypt(string(content), key)
+	if err != nil {
+		return "", err
+	}
+
+	// Return the decrypted content
+	return decrypted, nil
+}
+
 // EncryptDirectory encrypts all files in a directory
 func EncryptDirectory(inputDir, outputDir, key string) error {
 	return filepath.Walk(inputDir, func(path string, info os.FileInfo, err error) error {

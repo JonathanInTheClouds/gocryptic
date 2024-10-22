@@ -57,8 +57,26 @@ func main() {
 		Use:   "decrypt",
 		Short: "Decrypt a file, folder, or ciphertext",
 		Run: func(cmd *cobra.Command, args []string) {
-			if input == "" || output == "" || key == "" {
-				fmt.Println("Please provide input, output, and key")
+			if input == "" || key == "" {
+				fmt.Println("Please provide input and key")
+				return
+			}
+
+			// Check if the user wants to decrypt in-memory (i.e., only show the decrypted content in stdout)
+			inMemory, _ := cmd.Flags().GetBool("in-memory")
+			if inMemory {
+				decryptedContent, err := encryption.DecryptFileInMemory(input, key)
+				if err != nil {
+					fmt.Printf("Error decrypting file in memory: %v\n", err)
+				} else {
+					fmt.Println("Decrypted content:\n", decryptedContent)
+				}
+				return
+			}
+
+			// For file-based decryption, ensure output is specified
+			if output == "" {
+				fmt.Println("Please provide an output path")
 				return
 			}
 
@@ -88,16 +106,21 @@ func main() {
 		},
 	}
 
+	// Flags for encrypt command
 	encryptCmd.Flags().StringVarP(&key, "key", "k", "", "Encryption key")
 	encryptCmd.Flags().StringVarP(&input, "input", "i", "", "Input file or directory")
 	encryptCmd.Flags().StringVarP(&output, "output", "o", "", "Output file or directory")
 
+	// Flags for decrypt command
 	decryptCmd.Flags().StringVarP(&key, "key", "k", "", "Decryption key")
 	decryptCmd.Flags().StringVarP(&input, "input", "i", "", "Input file or directory")
 	decryptCmd.Flags().StringVarP(&output, "output", "o", "", "Output file or directory")
+	decryptCmd.Flags().BoolP("in-memory", "m", false, "Decrypt and show content in memory (stdout)")
 
+	// Add the commands to root
 	rootCmd.AddCommand(encryptCmd)
 	rootCmd.AddCommand(decryptCmd)
 
+	// Execute the root command
 	rootCmd.Execute()
 }

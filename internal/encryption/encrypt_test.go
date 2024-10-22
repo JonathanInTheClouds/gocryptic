@@ -118,3 +118,43 @@ func TestEncryptDecryptDirectory(t *testing.T) {
 		t.Errorf("Decrypted file2 content doesn't match. Got: %v, Want: %v", string(decryptedFile2), file2Content)
 	}
 }
+
+func TestDecryptFileInMemory(t *testing.T) {
+	originalContent := "This is the content for in-memory decryption"
+	key := "memoryencryptionkey"
+
+	// Create a temporary file for testing
+	inputFile, err := os.CreateTemp("", "testfile.txt") // Create temp file
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(inputFile.Name()) // Clean up after test
+
+	// Write the original content to the temp file
+	if _, err := inputFile.Write([]byte(originalContent)); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+
+	// Create a temporary file for encrypted output
+	encryptedFile, err := os.CreateTemp("", "encryptedfile.enc")
+	if err != nil {
+		t.Fatalf("Failed to create temp file for encryption: %v", err)
+	}
+	defer os.Remove(encryptedFile.Name())
+
+	// Encrypt the file
+	if err := encryption.EncryptFile(inputFile.Name(), encryptedFile.Name(), key); err != nil {
+		t.Fatalf("File encryption failed: %v", err)
+	}
+
+	// Decrypt the file in memory
+	decryptedContent, err := encryption.DecryptFileInMemory(encryptedFile.Name(), key)
+	if err != nil {
+		t.Fatalf("In-memory decryption failed: %v", err)
+	}
+
+	// Check if the decrypted content matches the original content
+	if decryptedContent != originalContent {
+		t.Errorf("In-memory decrypted content doesn't match original. Got: %v, Want: %v", decryptedContent, originalContent)
+	}
+}
