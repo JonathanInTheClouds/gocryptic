@@ -14,7 +14,6 @@ var (
 	colFg    = lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#f0f0f0"}
 	colFgMid = lipgloss.AdaptiveColor{Light: "#555555", Dark: "#aaaaaa"}
 	colFgDim = lipgloss.AdaptiveColor{Light: "#999999", Dark: "#555555"}
-	colBg2   = lipgloss.AdaptiveColor{Light: "#f3f3f3", Dark: "#1e1e1e"}
 
 	// Per-screen accent colours.
 	accentEncrypt = colPurple
@@ -31,16 +30,6 @@ var (
 	styleTitle = lipgloss.NewStyle().
 			Bold(true).
 			Padding(0, 1).
-			MarginBottom(1)
-
-	styleSubtitle = lipgloss.NewStyle().
-			Foreground(colFgMid).
-			MarginBottom(1)
-
-	// Menu
-	styleMenuHeader = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(colPurple).
 			MarginBottom(1)
 
 	// Form
@@ -121,8 +110,4 @@ func accentSelector(accent lipgloss.TerminalColor) lipgloss.Style {
 		Background(accent).
 		Foreground(lipgloss.Color("#ffffff")).
 		Padding(0, 1)
-}
-
-func helpKey(key, desc string) string {
-	return styleDim.Render(key) + " " + styleHelp.Render(desc)
 }

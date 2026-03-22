@@ -421,30 +421,34 @@ func (m Model) updateEncrypt(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusIdx = (m.focusIdx - 1 + total) % total
 			m.refocusInputs(fEncCount)
 		case "left":
-			if m.focusIdx == fEncCount { // algo selector
+			switch m.focusIdx {
+			case fEncCount:
 				if m.optionIdx > 0 {
 					m.optionIdx--
 				}
-			} else if m.focusIdx == fEncCount+2 { // encrypt button → browse
+			case fEncCount + 2:
 				m.focusIdx = fEncCount + 1
 			}
 		case "right":
-			if m.focusIdx == fEncCount { // algo selector
+			switch m.focusIdx {
+			case fEncCount:
 				if m.optionIdx < len(m.options)-1 {
 					m.optionIdx++
 				}
-			} else if m.focusIdx == fEncCount+1 { // browse → encrypt
+			case fEncCount + 1:
 				m.focusIdx = fEncCount + 2
 			}
 		case "f", "enter":
-			if m.focusIdx == fEncCount+1 {
+			switch m.focusIdx {
+			case fEncCount + 1:
 				m.fpCallback = screenEncrypt
 				m.fpField = fEncInput
 				m.current = screenFilePicker
 				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
-			}
-			if msg.String() == "enter" && m.focusIdx == fEncCount+2 {
-				return m, m.runEncrypt()
+			case fEncCount + 2:
+				if msg.String() == "enter" {
+					return m, m.runEncrypt()
+				}
 			}
 		}
 	}
@@ -458,8 +462,6 @@ func (m Model) runEncrypt() tea.Cmd {
 	outPath := m.inputs[fEncOutput].Value()
 
 	m.working = true
-	m.previous = screenEncrypt
-	m.current = screenWorking
 
 	return func() tea.Msg {
 		var ct []byte
@@ -545,14 +547,16 @@ func (m Model) updateDecrypt(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusIdx = fDecCount + 2
 			}
 		case "f", "enter":
-			if m.focusIdx == fDecCount+1 {
+			switch m.focusIdx {
+			case fDecCount + 1:
 				m.fpCallback = screenDecrypt
 				m.fpField = fDecInput
 				m.current = screenFilePicker
 				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
-			}
-			if msg.String() == "enter" && m.focusIdx == fDecCount+2 {
-				return m, m.runDecrypt()
+			case fDecCount + 2:
+				if msg.String() == "enter" {
+					return m, m.runDecrypt()
+				}
 			}
 		}
 	}
@@ -566,8 +570,6 @@ func (m Model) runDecrypt() tea.Cmd {
 	key := m.inputs[fDecKey].Value()
 	outPath := m.inputs[fDecOutput].Value()
 
-	m.previous = screenDecrypt
-	m.current = screenWorking
 
 	return func() tea.Msg {
 		if inputText != "" {
@@ -629,30 +631,34 @@ func (m Model) updateHash(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusIdx = (m.focusIdx - 1 + total) % total
 			m.refocusInputs(fHashCount)
 		case "left":
-			if m.focusIdx == fHashCount {
+			switch m.focusIdx {
+			case fHashCount:
 				if m.optionIdx > 0 {
 					m.optionIdx--
 				}
-			} else if m.focusIdx == fHashCount+2 {
+			case fHashCount + 2:
 				m.focusIdx = fHashCount + 1
 			}
 		case "right":
-			if m.focusIdx == fHashCount {
+			switch m.focusIdx {
+			case fHashCount:
 				if m.optionIdx < len(m.options)-1 {
 					m.optionIdx++
 				}
-			} else if m.focusIdx == fHashCount+1 {
+			case fHashCount + 1:
 				m.focusIdx = fHashCount + 2
 			}
 		case "f", "enter":
-			if m.focusIdx == fHashCount+1 {
+			switch m.focusIdx {
+			case fHashCount + 1:
 				m.fpCallback = screenHash
 				m.fpField = fHashInput
 				m.current = screenFilePicker
 				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
-			}
-			if msg.String() == "enter" && m.focusIdx == fHashCount+2 {
-				return m, m.runHash()
+			case fHashCount + 2:
+				if msg.String() == "enter" {
+					return m, m.runHash()
+				}
 			}
 		}
 	}
@@ -664,8 +670,6 @@ func (m Model) runHash() tea.Cmd {
 	algo := m.options[m.optionIdx]
 	filePath := m.fpSelectedPath
 
-	m.previous = screenHash
-	m.current = screenWorking
 
 	return func() tea.Msg {
 		var results map[string]string
@@ -729,16 +733,12 @@ func (m Model) updateKeygen(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusIdx = (m.focusIdx - 1 + total) % total
 			m.refocusKeygen()
 		case "left":
-			if m.focusIdx == 0 {
-				if m.optionIdx > 0 {
-					m.optionIdx--
-				}
+			if m.focusIdx == 0 && m.optionIdx > 0 {
+				m.optionIdx--
 			}
 		case "right":
-			if m.focusIdx == 0 {
-				if m.optionIdx < len(m.options)-1 {
-					m.optionIdx++
-				}
+			if m.focusIdx == 0 && m.optionIdx < len(m.options)-1 {
+				m.optionIdx++
 			}
 		case "enter":
 			if m.focusIdx == 3 {
@@ -747,12 +747,12 @@ func (m Model) updateKeygen(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	// Route input updates to the correct field
-	if m.focusIdx == 1 {
+	switch m.focusIdx {
+	case 1:
 		var cmd tea.Cmd
 		m.inputs[fKeygenOutput], cmd = m.inputs[fKeygenOutput].Update(msg)
 		return m, cmd
-	}
-	if m.focusIdx == 2 {
+	case 2:
 		var cmd tea.Cmd
 		m.inputs[fKeygenExtra], cmd = m.inputs[fKeygenExtra].Update(msg)
 		return m, cmd
@@ -763,9 +763,10 @@ func (m Model) updateKeygen(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) refocusKeygen() {
 	m.inputs[fKeygenOutput].Blur()
 	m.inputs[fKeygenExtra].Blur()
-	if m.focusIdx == 1 {
+	switch m.focusIdx {
+	case 1:
 		m.inputs[fKeygenOutput].Focus()
-	} else if m.focusIdx == 2 {
+	case 2:
 		m.inputs[fKeygenExtra].Focus()
 	}
 }
@@ -775,8 +776,6 @@ func (m Model) runKeygen() tea.Cmd {
 	outPrefix := m.inputs[fKeygenOutput].Value()
 	extra := m.inputs[fKeygenExtra].Value()
 
-	m.previous = screenKeygen
-	m.current = screenWorking
 
 	return func() tea.Msg {
 		switch keyType {
@@ -865,34 +864,38 @@ func (m Model) updateEncode(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.inputs[fEncodeInput].Blur()
 			}
 		case "left":
-			if m.focusIdx == eFormat {
+			switch m.focusIdx {
+			case eFormat:
 				if m.optionIdx > 0 {
 					m.optionIdx--
 				}
-			} else if m.focusIdx == eMode {
+			case eMode:
 				m.toggleIdx = 0
-			} else if m.focusIdx == eRun {
+			case eRun:
 				m.focusIdx = eBrowse
 			}
 		case "right":
-			if m.focusIdx == eFormat {
+			switch m.focusIdx {
+			case eFormat:
 				if m.optionIdx < len(m.options)-1 {
 					m.optionIdx++
 				}
-			} else if m.focusIdx == eMode {
+			case eMode:
 				m.toggleIdx = 1
-			} else if m.focusIdx == eBrowse {
+			case eBrowse:
 				m.focusIdx = eRun
 			}
 		case "f", "enter":
-			if m.focusIdx == eBrowse {
+			switch m.focusIdx {
+			case eBrowse:
 				m.fpCallback = screenEncode
 				m.fpField = fEncodeInput
 				m.current = screenFilePicker
 				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
-			}
-			if msg.String() == "enter" && m.focusIdx == eRun {
-				return m, m.runEncode()
+			case eRun:
+				if msg.String() == "enter" {
+					return m, m.runEncode()
+				}
 			}
 		}
 	}
@@ -928,8 +931,6 @@ func (m Model) runEncode() tea.Cmd {
 	format := m.options[m.optionIdx]
 	isDecode := m.toggleIdx == 1
 
-	m.previous = screenEncode
-	m.current = screenWorking
 
 	return func() tea.Msg {
 		var data []byte
@@ -1000,32 +1001,35 @@ func (m Model) updateSign(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusIdx = (m.focusIdx - 1 + sTotal) % sTotal
 			m.refocusSignInputs()
 		case "left":
-			if m.focusIdx == sBrowseKey {
+			switch m.focusIdx {
+			case sBrowseKey:
 				m.focusIdx = sBrowseFile
-			} else if m.focusIdx == sSign {
+			case sSign:
 				m.focusIdx = sBrowseKey
 			}
 		case "right":
-			if m.focusIdx == sBrowseFile {
+			switch m.focusIdx {
+			case sBrowseFile:
 				m.focusIdx = sBrowseKey
-			} else if m.focusIdx == sBrowseKey {
+			case sBrowseKey:
 				m.focusIdx = sSign
 			}
 		case "f", "enter":
-			if m.focusIdx == sBrowseFile {
+			switch m.focusIdx {
+			case sBrowseFile:
 				m.fpCallback = screenSign
 				m.fpField = fSignFile
 				m.current = screenFilePicker
 				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
-			}
-			if m.focusIdx == sBrowseKey {
+			case sBrowseKey:
 				m.fpCallback = screenSign
 				m.fpField = fSignKey
 				m.current = screenFilePicker
 				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
-			}
-			if msg.String() == "enter" && m.focusIdx == sSign {
-				return m, m.runSign()
+			case sSign:
+				if msg.String() == "enter" {
+					return m, m.runSign()
+				}
 			}
 		}
 	}
@@ -1065,8 +1069,6 @@ func (m Model) runSign() tea.Cmd {
 	keyPath := m.inputs[fSignKey].Value()
 	outPath := m.inputs[fSignOutput].Value()
 
-	m.previous = screenSign
-	m.current = screenWorking
 
 	return func() tea.Msg {
 		if filePath == "" || keyPath == "" {
@@ -1184,8 +1186,6 @@ func (m Model) runVerify() tea.Cmd {
 	keyPath := m.inputs[fVerifyKey].Value()
 	sigPath := m.inputs[fVerifySig].Value()
 
-	m.previous = screenVerify
-	m.current = screenWorking
 
 	return func() tea.Msg {
 		if filePath == "" || keyPath == "" || sigPath == "" {
