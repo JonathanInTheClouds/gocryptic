@@ -158,9 +158,10 @@ type Model struct {
 
 	// File picker
 	fp             filepicker.Model
-	fpCallback     screen  // screen to return to after pick
-	fpField        int     // which field to populate
+	fpCallback     screen
+	fpField        int
 	fpSelectedPath string
+	pathInput      textinput.Model
 
 	// Spinner (working screen)
 	spinner spinner.Model
@@ -201,16 +202,22 @@ func NewModel() Model {
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(colPurple)
 
-	// File picker
+	// File picker (kept for backward compat but replaced by pathInput)
 	fp := filepicker.New()
 	fp.CurrentDirectory, _ = os.Getwd()
-	fp.ShowHidden = false
+
+	// Path input for the custom file picker screen
+	pi := textinput.New()
+	pi.Placeholder = "Type or paste a file path (tab to autocomplete)"
+	pi.CharLimit = 1024
+	pi.Focus()
 
 	return Model{
-		current: screenMenu,
-		list:    l,
-		spinner: sp,
-		fp:      fp,
+		current:   screenMenu,
+		list:      l,
+		spinner:   sp,
+		fp:        fp,
+		pathInput: pi,
 	}
 }
 
@@ -434,9 +441,7 @@ func (m Model) updateEncrypt(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.fpCallback = screenEncrypt
 				m.fpField = fEncInput
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			}
 			if msg.String() == "enter" && m.focusIdx == fEncCount+2 {
 				return m, m.runEncrypt()
@@ -544,9 +549,7 @@ func (m Model) updateDecrypt(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.fpCallback = screenDecrypt
 				m.fpField = fDecInput
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			}
 			if msg.String() == "enter" && m.focusIdx == fDecCount+2 {
 				return m, m.runDecrypt()
@@ -646,9 +649,7 @@ func (m Model) updateHash(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.fpCallback = screenHash
 				m.fpField = fHashInput
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			}
 			if msg.String() == "enter" && m.focusIdx == fHashCount+2 {
 				return m, m.runHash()
@@ -888,9 +889,7 @@ func (m Model) updateEncode(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.fpCallback = screenEncode
 				m.fpField = fEncodeInput
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			}
 			if msg.String() == "enter" && m.focusIdx == eRun {
 				return m, m.runEncode()
@@ -1017,17 +1016,13 @@ func (m Model) updateSign(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.fpCallback = screenSign
 				m.fpField = fSignFile
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			}
 			if m.focusIdx == sBrowseKey {
 				m.fpCallback = screenSign
 				m.fpField = fSignKey
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			}
 			if msg.String() == "enter" && m.focusIdx == sSign {
 				return m, m.runSign()
@@ -1135,23 +1130,17 @@ func (m Model) updateVerify(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.fpCallback = screenVerify
 				m.fpField = fVerifyFile
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			case vBrowseKey:
 				m.fpCallback = screenVerify
 				m.fpField = fVerifyKey
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			case vBrowseSig:
 				m.fpCallback = screenVerify
 				m.fpField = fVerifySig
 				m.current = screenFilePicker
-				var cmd tea.Cmd
-				m.fp, cmd = m.fp.Update(nil)
-				return m, cmd
+				m.pathInput.SetValue(""); m.pathInput.Focus(); return m, nil
 			case vVerify:
 				if msg.String() == "enter" {
 					return m, m.runVerify()
@@ -1222,18 +1211,60 @@ func (m Model) runVerify() tea.Cmd {
 // ---------------------------------------------------------------------------
 
 func (m Model) updateFilePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	m.fp, cmd = m.fp.Update(msg)
-	if didSelect, path := m.fp.DidSelectFile(msg); didSelect {
-		if m.fpField < len(m.inputs) {
-			m.inputs[m.fpField].SetValue(path)
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc":
+			m.current = m.fpCallback
+			return m, nil
+		case "enter":
+			path := strings.TrimSpace(m.pathInput.Value())
+			if strings.HasPrefix(path, "~/") {
+				if home, err := os.UserHomeDir(); err == nil {
+					path = filepath.Join(home, path[2:])
+				}
+			}
+			if info, err := os.Stat(path); err == nil && !info.IsDir() {
+				if m.fpField < len(m.inputs) {
+					m.inputs[m.fpField].SetValue(path)
+				}
+				m.fpSelectedPath = path
+				m.current = m.fpCallback
+			}
+			return m, nil
+		case "tab":
+			path := m.pathInput.Value()
+			if strings.HasPrefix(path, "~/") {
+				if home, err := os.UserHomeDir(); err == nil {
+					path = filepath.Join(home, path[2:])
+				}
+			}
+			dir := filepath.Dir(path)
+			prefix := filepath.Base(path)
+			if path == "" || path == "." {
+				dir, _ = os.Getwd()
+				prefix = ""
+			}
+			if entries, err := os.ReadDir(dir); err == nil {
+				for _, e := range entries {
+					if strings.HasPrefix(e.Name(), prefix) {
+						completed := filepath.Join(dir, e.Name())
+						if e.IsDir() {
+							completed += "/"
+						}
+						m.pathInput.SetValue(completed)
+						m.pathInput.CursorEnd()
+						break
+					}
+				}
+			}
+			return m, nil
 		}
-		m.fpSelectedPath = path
-		m.current = m.fpCallback
 	}
+	var cmd tea.Cmd
+	m.pathInput, cmd = m.pathInput.Update(msg)
 	return m, cmd
 }
-
 // ---------------------------------------------------------------------------
 // Result
 // ---------------------------------------------------------------------------
@@ -1434,9 +1465,53 @@ func (m Model) viewVerify() string {
 
 func (m Model) viewFilePicker() string {
 	var b strings.Builder
-	b.WriteString(accentTitle("Pick a file", colTeal) + "\n")
-	b.WriteString(m.fp.View() + "\n")
-	b.WriteString(styleHelp.Render("esc back  enter select"))
+	b.WriteString(accentTitle("Pick a file", colTeal) + "\n\n")
+	b.WriteString(styleLabel.Render("Path") + focusedInput(colTeal).Render(m.pathInput.View()) + "\n\n")
+
+	// Show directory listing based on current input
+	path := strings.TrimSpace(m.pathInput.Value())
+	if strings.HasPrefix(path, "~/") {
+		if home, _ := os.UserHomeDir(); home != "" {
+			path = filepath.Join(home, path[2:])
+		}
+	}
+	if path == "" {
+		path, _ = os.Getwd()
+	}
+
+	checkDir := path
+	prefix := ""
+	if info, err := os.Stat(path); err != nil || !info.IsDir() {
+		checkDir = filepath.Dir(path)
+		prefix = filepath.Base(path)
+	}
+	// Clean up any double slashes
+	checkDir = filepath.Clean(checkDir)
+
+	if entries, err := os.ReadDir(checkDir); err == nil {
+		b.WriteString(styleDim.Render(checkDir+"/") + "\n")
+		count := 0
+		for _, e := range entries {
+			// Skip hidden files unless explicitly typed
+			if strings.HasPrefix(e.Name(), ".") && !strings.HasPrefix(prefix, ".") {
+				continue
+			}
+			if prefix != "" && !strings.HasPrefix(e.Name(), prefix) {
+				continue
+			}
+			name := e.Name()
+			if e.IsDir() {
+				name += "/"
+			}
+			b.WriteString(styleDim.Render("  "+name) + "\n")
+			count++
+			if count >= 10 {
+				break
+			}
+		}
+	}
+
+	b.WriteString("\n" + styleHelp.Render("type path  tab autocomplete  enter select  esc back"))
 	return styleApp.Render(b.String())
 }
 
