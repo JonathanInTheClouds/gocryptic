@@ -317,6 +317,8 @@ func DecryptAuto(data []byte, password string) ([]byte, error) {
 		return DecryptChaCha20(data, password)
 	case AlgoRSA:
 		return nil, fmt.Errorf("RSA-encrypted file requires a private key — use --algo rsa --rsa-key <priv.pem>")
+	case AlgoECDH:
+		return nil, fmt.Errorf("ECDH-encrypted file requires a private key — use --algo ecdh --ecdh-key <priv.pem>")
 	default:
 		return nil, fmt.Errorf("unknown algorithm byte: 0x%02x", data[4])
 	}

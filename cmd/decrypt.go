@@ -49,6 +49,7 @@ var (
 	dPrompt  bool
 	dStream  bool
 	dRSAKey  string
+	dECDHKey string
 	dOut     string
 	dRaw     bool
 )
@@ -74,6 +75,8 @@ func init() {
 		"Prompt for password interactively (input hidden, like sudo)")
 	decryptCmd.Flags().StringVar(&dRSAKey, "rsa-key", "",
 		"RSA private key PEM file (required when --algo rsa)")
+	decryptCmd.Flags().StringVar(&dECDHKey, "ecdh-key", "",
+		"ECDH/ECDSA private key PEM file (required when --algo ecdh)")
 	decryptCmd.Flags().StringVarP(&dOut, "output", "o", "",
 		"Output file (default: strips .gcry suffix, or stdout for string/stdin mode)")
 	decryptCmd.Flags().BoolVar(&dRaw, "raw", false,
@@ -109,7 +112,10 @@ func runDecrypt(_ *cobra.Command, _ []string) error {
 	if algo == "rsa" && dRSAKey == "" {
 		return fmt.Errorf("--rsa-key (RSA private key PEM) is required for RSA decryption")
 	}
-	if algo != "rsa" {
+	if algo == "ecdh" && dECDHKey == "" {
+		return fmt.Errorf("--ecdh-key (ECDH private key PEM) is required for ECDH decryption")
+	}
+	if algo != "rsa" && algo != "ecdh" {
 		var err error
 		dKey, err = resolveKey(dKey, dKeyEnv, dKeyFile, dPrompt)
 		if err != nil {
@@ -175,6 +181,8 @@ func decryptStreamFrom(r io.Reader, w io.Writer, algo string) error {
 		return crypto.DecryptStreamAESGCM(r, w, dKey)
 	case "chacha20":
 		return crypto.DecryptStreamChaCha20(r, w, dKey)
+	case "ecdh":
+		return crypto.DecryptECDHStream(r, w, dECDHKey)
 	default:
 		return fmt.Errorf("streaming decryption not supported for algorithm %q", algo)
 	}
@@ -184,9 +192,6 @@ func decryptStreamFrom(r io.Reader, w io.Writer, algo string) error {
 func decryptBytes(ct []byte, algo string) ([]byte, error) {
 	switch algo {
 	case "auto", "":
-		if dKey == "" {
-			return nil, fmt.Errorf("--key is required for auto-detect decryption")
-		}
 		return crypto.DecryptAuto(ct, dKey)
 	case "aes-gcm":
 		return crypto.DecryptAESGCM(ct, dKey)
@@ -196,8 +201,10 @@ func decryptBytes(ct []byte, algo string) ([]byte, error) {
 		return crypto.DecryptChaCha20(ct, dKey)
 	case "rsa":
 		return crypto.DecryptRSA(ct, dRSAKey)
+	case "ecdh":
+		return crypto.DecryptECDH(ct, dECDHKey)
 	default:
-		return nil, fmt.Errorf("unknown algorithm %q  (choices: auto, aes-gcm, aes-cbc, chacha20, rsa)", algo)
+		return nil, fmt.Errorf("unknown algorithm %q  (choices: auto, aes-gcm, aes-cbc, chacha20, rsa, ecdh)", algo)
 	}
 }
 

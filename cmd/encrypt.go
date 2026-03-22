@@ -52,6 +52,7 @@ var (
 	eConfirm bool
 	eStream  bool
 	eRSAKey  string
+	eECDHKey string
 	eOut     string
 	eRaw     bool
 )
@@ -79,6 +80,8 @@ func init() {
 		"Ask for password twice to confirm (use with --prompt)")
 	encryptCmd.Flags().StringVar(&eRSAKey, "rsa-key", "",
 		"RSA public key PEM file (required when --algo rsa)")
+	encryptCmd.Flags().StringVar(&eECDHKey, "ecdh-key", "",
+		"ECDH/ECDSA public key PEM file (required when --algo ecdh)")
 	encryptCmd.Flags().StringVarP(&eOut, "output", "o", "",
 		"Output file (default: <input-file>.gcry, or stdout for --input/stdin)")
 	encryptCmd.Flags().BoolVar(&eRaw, "raw", false,
@@ -113,7 +116,7 @@ func runEncrypt(_ *cobra.Command, _ []string) error {
 	}
 
 	// Key validation.
-	if algo != "rsa" {
+	if algo != "rsa" && algo != "ecdh" {
 		var err error
 		if ePrompt && eConfirm {
 			eKey, err = promptPasswordConfirm()
@@ -129,6 +132,9 @@ func runEncrypt(_ *cobra.Command, _ []string) error {
 	}
 	if algo == "rsa" && eRSAKey == "" {
 		return fmt.Errorf("--rsa-key (RSA public key PEM) is required for RSA encryption")
+	}
+	if algo == "ecdh" && eECDHKey == "" {
+		return fmt.Errorf("--ecdh-key (ECDH public key PEM) is required for ECDH encryption")
 	}
 
 	// Directory mode.
@@ -205,10 +211,12 @@ func encryptStreamTo(r io.Reader, w io.Writer, algo string) error {
 		return crypto.EncryptStreamAESGCM(r, w, eKey)
 	case "chacha20":
 		return crypto.EncryptStreamChaCha20(r, w, eKey)
+	case "ecdh":
+		return crypto.EncryptECDHStream(r, w, eECDHKey)
 	case "aes-cbc":
 		return fmt.Errorf("--stream is not supported for aes-cbc (use aes-gcm or chacha20)")
 	case "rsa":
-		return fmt.Errorf("--stream is not supported for rsa")
+		return fmt.Errorf("--stream is not supported for rsa (use ecdh for asymmetric streaming)")
 	default:
 		return fmt.Errorf("unknown algorithm %q", algo)
 	}
@@ -225,8 +233,10 @@ func encryptBytes(plaintext []byte, algo string) ([]byte, error) {
 		return crypto.EncryptChaCha20(plaintext, eKey)
 	case "rsa":
 		return crypto.EncryptRSA(plaintext, eRSAKey)
+	case "ecdh":
+		return crypto.EncryptECDH(plaintext, eECDHKey)
 	default:
-		return nil, fmt.Errorf("unknown algorithm %q  (choices: aes-gcm, aes-cbc, chacha20, rsa)", algo)
+		return nil, fmt.Errorf("unknown algorithm %q  (choices: aes-gcm, aes-cbc, chacha20, rsa, ecdh)", algo)
 	}
 }
 

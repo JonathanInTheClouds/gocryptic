@@ -305,6 +305,50 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
+section "19 · ECDH key exchange"
+# ─────────────────────────────────────────────────────────────
+
+ECDH_PRIV="$TMPDIR/ecdh_priv.pem"
+ECDH_PUB="$TMPDIR/ecdh_pub.pem"
+$BIN keygen --type ecdh --priv "$ECDH_PRIV" --pub "$ECDH_PUB" 2>/dev/null
+[[ -f "$ECDH_PRIV" && -f "$ECDH_PUB" ]] && pass "ECDH key pair generated" || fail "ECDH key pair missing"
+
+# String round-trip (no password needed)
+CT=$($BIN encrypt --algo ecdh --input 'ECDH test message' --ecdh-key "$ECDH_PUB" 2>/dev/null)
+[[ "$CT" == R0NSW* ]] && pass "ECDH: ciphertext has GCRY magic" || fail "ECDH: bad ciphertext"
+
+PT=$($BIN decrypt --algo ecdh --input "$CT" --ecdh-key "$ECDH_PRIV" 2>/dev/null)
+[[ "$PT" == "ECDH test message" ]] && pass "ECDH: string round-trip" || fail "ECDH: string round-trip (got: '$PT')"
+
+# Wrong key rejected
+WRONG_PRIV="$TMPDIR/ecdh_wrong_priv.pem"
+WRONG_PUB="$TMPDIR/ecdh_wrong_pub.pem"
+$BIN keygen --type ecdh --priv "$WRONG_PRIV" --pub "$WRONG_PUB" 2>/dev/null
+if $BIN decrypt --algo ecdh --input "$CT" --ecdh-key "$WRONG_PRIV" 2>/dev/null; then
+  fail "ECDH: wrong key accepted"
+else
+  pass "ECDH: wrong key correctly rejected"
+fi
+
+# File round-trip
+ECDH_FILE="$TMPDIR/ecdh_plain.txt"
+ECDH_ENC="$TMPDIR/ecdh_plain.txt.gcry"
+ECDH_DEC="$TMPDIR/ecdh_dec.txt"
+echo 'Asymmetric file encryption without a password.' > "$ECDH_FILE"
+$BIN encrypt --algo ecdh --file "$ECDH_FILE" --ecdh-key "$ECDH_PUB" --output "$ECDH_ENC" 2>/dev/null
+$BIN decrypt --algo ecdh --file "$ECDH_ENC" --ecdh-key "$ECDH_PRIV" --output "$ECDH_DEC" 2>/dev/null
+diff -q "$ECDH_FILE" "$ECDH_DEC" &>/dev/null && pass "ECDH: file round-trip" || fail "ECDH: file round-trip mismatch"
+
+# Streaming round-trip
+ECDH_STREAM_IN="$TMPDIR/ecdh_stream.bin"
+ECDH_STREAM_ENC="$TMPDIR/ecdh_stream.bin.gcry"
+ECDH_STREAM_DEC="$TMPDIR/ecdh_stream_dec.bin"
+dd if=/dev/urandom bs=1024 count=100 of="$ECDH_STREAM_IN" 2>/dev/null
+$BIN encrypt --algo ecdh --file "$ECDH_STREAM_IN" --ecdh-key "$ECDH_PUB" --stream --output "$ECDH_STREAM_ENC" 2>/dev/null
+$BIN decrypt --algo ecdh --file "$ECDH_STREAM_ENC" --ecdh-key "$ECDH_PRIV" --stream --output "$ECDH_STREAM_DEC" 2>/dev/null
+diff -q "$ECDH_STREAM_IN" "$ECDH_STREAM_DEC" &>/dev/null && pass "ECDH: streaming round-trip (100KB)" || fail "ECDH: streaming round-trip mismatch"
+
+# ─────────────────────────────────────────────────────────────
 echo -e "\n══════════════════════════════════════════"
 echo -e " Results: ${GREEN}${PASS_COUNT} passed${NC}  ${RED}${FAIL_COUNT} failed${NC}"
 echo -e "══════════════════════════════════════════"

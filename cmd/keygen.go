@@ -88,8 +88,8 @@ func runKeygen(_ *cobra.Command, _ []string) error {
 		success("Private key → %s  (mode 0600)", kPriv)
 		success("Public key  → %s  (mode 0644)", kPub)
 
-	case "ecdsa":
-		fmt.Println("Generating ECDSA P-256 key pair…")
+	case "ecdsa", "ecdh":
+		fmt.Printf("Generating ECDSA/ECDH P-256 key pair…\n")
 		if err := keygen.GenerateECDSAKeyPair(kPriv, kPub); err != nil {
 			return err
 		}

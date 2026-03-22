@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"io"
 
-	gorand "crypto/rand"
-
-	gochacha "golang.org/x/crypto/chacha20poly1305"
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 // chunkSize is the plaintext size of each streaming chunk (64 KiB).
@@ -87,7 +86,7 @@ func DecryptStreamAuto(r io.Reader, w io.Writer, password string) error {
 
 func streamEncrypt(r io.Reader, w io.Writer, password string, algo byte) error {
 	salt := make([]byte, saltSize)
-	if _, err := io.ReadFull(gorand.Reader, salt); err != nil {
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		return fmt.Errorf("salt generation: %w", err)
 	}
 	key, err := deriveKey([]byte(password), salt)
@@ -123,7 +122,7 @@ func streamEncrypt(r io.Reader, w io.Writer, password string, algo byte) error {
 			return fmt.Errorf("reading input: %w", readErr)
 		}
 
-		if _, err := io.ReadFull(gorand.Reader, nonce); err != nil {
+		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 			return fmt.Errorf("nonce generation: %w", err)
 		}
 
@@ -219,7 +218,7 @@ func makeAEAD(algo byte, key []byte) (cipher.AEAD, error) {
 		}
 		return cipher.NewGCM(block)
 	case StreamAlgoChaCha20:
-		return gochacha.NewX(key)
+		return chacha20poly1305.NewX(key)
 	default:
 		return nil, fmt.Errorf("unsupported streaming algorithm: 0x%02x", algo)
 	}
