@@ -1,0 +1,21 @@
+# Binary
+gocryptic
+gocryptic.exe
+
+# Build output
+dist/
+
+# Test artifacts
+*.gcry
+*.sig
+*.pem
+secret*.txt
+secret_tampered.txt
+vault/
+
+# Go
+vendor/
+
+# OS
+.DS_Store
+Thumbs.db
