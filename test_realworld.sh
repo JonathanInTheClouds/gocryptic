@@ -4,7 +4,7 @@
 # Run from the project root after: go mod tidy && make build
 # Usage: bash test_realworld.sh
 
-set -euo pipefail
+set -uo pipefail
 
 BIN="./gocryptic"
 TMPDIR=$(mktemp -d)
