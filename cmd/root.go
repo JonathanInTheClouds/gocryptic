@@ -11,7 +11,10 @@ import (
 var version = "dev"
 
 // SetVersion is called from main with the build-time version string.
-func SetVersion(v string) { version = v }
+func SetVersion(v string) {
+	version = v
+	rootCmd.Version = v
+}
 
 var rootCmd = &cobra.Command{
 	Use:     "gocryptic",
