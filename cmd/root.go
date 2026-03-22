@@ -8,8 +8,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "dev"
+
+// SetVersion is called from main with the build-time version string.
+func SetVersion(v string) { version = v }
+
 var rootCmd = &cobra.Command{
-	Use:   "gocryptic",
+	Use:     "gocryptic",
+	Version: version,
 	Short: "GoCryptic — A powerful cryptographic toolkit",
 	Long: `
   ██████╗  ██████╗  ██████╗██████╗ ██╗   ██╗██████╗ ████████╗██╗ ██████╗
