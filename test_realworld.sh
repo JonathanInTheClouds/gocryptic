@@ -241,19 +241,19 @@ section "17 · --prompt and --confirm (non-TTY rejection)"
 
 # In a non-interactive script stdin is a pipe, so --prompt must fail gracefully.
 # We verify the error path rather than the happy path (which requires a real TTY).
-if $BIN encrypt --algo aes-gcm --input 'x' --prompt 2>/dev/null; then
+if $BIN encrypt --algo aes-gcm --input 'x' --prompt </dev/null 2>/dev/null; then
   fail "--prompt: accepted in non-TTY context (should have failed)"
 else
   pass "--prompt: correctly rejected when stdin is not a TTY"
 fi
 
-if $BIN encrypt --algo aes-gcm --input 'x' --prompt --confirm 2>/dev/null; then
+if $BIN encrypt --algo aes-gcm --input 'x' --prompt --confirm </dev/null 2>/dev/null; then
   fail "--prompt --confirm: accepted in non-TTY context (should have failed)"
 else
   pass "--prompt --confirm: correctly rejected when stdin is not a TTY"
 fi
 
-if $BIN decrypt --input 'someciphertext' --prompt 2>/dev/null; then
+if $BIN decrypt --input 'someciphertext' --prompt </dev/null 2>/dev/null; then
   fail "--prompt on decrypt: accepted in non-TTY context"
 else
   pass "--prompt on decrypt: correctly rejected when stdin is not a TTY"
