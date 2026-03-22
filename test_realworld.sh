@@ -260,6 +260,51 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
+section "18 · Streaming encryption / decryption"
+# ─────────────────────────────────────────────────────────────
+
+# Generate a test file larger than one chunk (64KB) — use 200KB
+STREAM_FILE="$TMPDIR/stream_test.bin"
+dd if=/dev/urandom bs=1024 count=200 of="$STREAM_FILE" 2>/dev/null
+STREAM_ENC="$TMPDIR/stream_test.bin.gcry"
+STREAM_DEC="$TMPDIR/stream_test_dec.bin"
+
+# AES-GCM streaming round-trip
+$BIN encrypt --algo aes-gcm --file "$STREAM_FILE" --key 'streampass' --stream --output "$STREAM_ENC" 2>/dev/null
+[[ -f "$STREAM_ENC" ]] && pass "--stream: encrypted file created" || fail "--stream: encrypted file missing"
+
+$BIN decrypt --file "$STREAM_ENC" --key 'streampass' --stream --output "$STREAM_DEC" 2>/dev/null
+diff -q "$STREAM_FILE" "$STREAM_DEC" &>/dev/null && pass "--stream: AES-GCM 200KB round-trip" || fail "--stream: AES-GCM round-trip mismatch"
+
+# ChaCha20 streaming round-trip
+STREAM_ENC2="$TMPDIR/stream_chacha.bin.gcry"
+STREAM_DEC2="$TMPDIR/stream_chacha_dec.bin"
+$BIN encrypt --algo chacha20 --file "$STREAM_FILE" --key 'streampass' --stream --output "$STREAM_ENC2" 2>/dev/null
+$BIN decrypt --file "$STREAM_ENC2" --key 'streampass' --stream --output "$STREAM_DEC2" 2>/dev/null
+diff -q "$STREAM_FILE" "$STREAM_DEC2" &>/dev/null && pass "--stream: ChaCha20 200KB round-trip" || fail "--stream: ChaCha20 round-trip mismatch"
+
+# Wrong password rejected on stream decrypt
+if $BIN decrypt --file "$STREAM_ENC" --key 'wrongpass' --stream --output /dev/null 2>/dev/null; then
+  fail "--stream: wrong password accepted"
+else
+  pass "--stream: wrong password correctly rejected"
+fi
+
+# stdin | stdout streaming
+STREAM_STDOUT="$TMPDIR/stream_stdout.gcry"
+STREAM_STDOUT_DEC="$TMPDIR/stream_stdout_dec.bin"
+$BIN encrypt --algo aes-gcm --key 'streampass' < "$STREAM_FILE" > "$STREAM_STDOUT" 2>/dev/null
+$BIN decrypt --key 'streampass' < "$STREAM_STDOUT" > "$STREAM_STDOUT_DEC" 2>/dev/null
+diff -q "$STREAM_FILE" "$STREAM_STDOUT_DEC" &>/dev/null && pass "--stream: stdin/stdout pipe round-trip" || fail "--stream: stdin/stdout pipe mismatch"
+
+# aes-cbc --stream should error
+if $BIN encrypt --algo aes-cbc --file "$STREAM_FILE" --key 'streampass' --stream 2>/dev/null; then
+  fail "--stream: aes-cbc accepted (should be rejected)"
+else
+  pass "--stream: aes-cbc correctly rejected"
+fi
+
+# ─────────────────────────────────────────────────────────────
 echo -e "\n══════════════════════════════════════════"
 echo -e " Results: ${GREEN}${PASS_COUNT} passed${NC}  ${RED}${FAIL_COUNT} failed${NC}"
 echo -e "══════════════════════════════════════════"

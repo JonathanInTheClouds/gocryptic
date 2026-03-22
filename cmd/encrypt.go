@@ -50,6 +50,7 @@ var (
 	eKeyFile string
 	ePrompt  bool
 	eConfirm bool
+	eStream  bool
 	eRSAKey  string
 	eOut     string
 	eRaw     bool
@@ -70,6 +71,8 @@ func init() {
 		"Environment variable containing the password (e.g. --key-env GCRY_PASS)")
 	encryptCmd.Flags().StringVar(&eKeyFile, "key-file", "",
 		"File containing the password (first line is used)")
+	encryptCmd.Flags().BoolVarP(&eStream, "stream", "s", false,
+		"Stream encryption — constant memory usage, required for very large files")
 	encryptCmd.Flags().BoolVarP(&ePrompt, "prompt", "p", false,
 		"Prompt for password interactively (input hidden, like sudo)")
 	encryptCmd.Flags().BoolVarP(&eConfirm, "confirm", "c", false,
@@ -133,7 +136,50 @@ func runEncrypt(_ *cobra.Command, _ []string) error {
 		return encryptDirectory(eDir, algo)
 	}
 
-	// Single-item mode: read plaintext.
+	// Stdin — always stream.
+	if eFile == "" && eInput == "" {
+		return encryptStream(os.Stdin, algo)
+	}
+
+	// File — check size, warn if large, stream if --stream set.
+	if eFile != "" {
+		info, err := os.Stat(eFile)
+		if err != nil {
+			return fmt.Errorf("stat %s: %w", eFile, err)
+		}
+		size := info.Size()
+		if !eStream {
+			if size >= crypto.StreamThresholdStrong {
+				warn("file is %.0f MB — strongly recommended: add --stream to avoid high memory usage",
+					float64(size)/1024/1024)
+			} else if size >= crypto.StreamThresholdWarn {
+				warn("file is %.0f MB — tip: use --stream for constant memory usage", float64(size)/1024/1024)
+			}
+		}
+		if eStream {
+			f, err := os.Open(eFile)
+			if err != nil {
+				return fmt.Errorf("opening %s: %w", eFile, err)
+			}
+			defer f.Close()
+			outPath := eOut
+			if outPath == "" {
+				outPath = eFile + ".gcry"
+			}
+			out, err := os.Create(outPath)
+			if err != nil {
+				return fmt.Errorf("creating %s: %w", outPath, err)
+			}
+			defer out.Close()
+			if err := encryptStreamTo(f, out, algo); err != nil {
+				return err
+			}
+			success("Encrypted → %s", outPath)
+			return nil
+		}
+	}
+
+	// Single-item in-memory mode.
 	plaintext, err := readInput(eInput, eFile)
 	if err != nil {
 		return err
@@ -145,6 +191,27 @@ func runEncrypt(_ *cobra.Command, _ []string) error {
 	}
 
 	return writeEncryptedOutput(ct, eFile, eOut, eRaw)
+}
+
+// encryptStream reads from r and writes streaming ciphertext to stdout.
+func encryptStream(r io.Reader, algo string) error {
+	return encryptStreamTo(r, os.Stdout, algo)
+}
+
+// encryptStreamTo reads from r and writes streaming ciphertext to w.
+func encryptStreamTo(r io.Reader, w io.Writer, algo string) error {
+	switch algo {
+	case "aes-gcm":
+		return crypto.EncryptStreamAESGCM(r, w, eKey)
+	case "chacha20":
+		return crypto.EncryptStreamChaCha20(r, w, eKey)
+	case "aes-cbc":
+		return fmt.Errorf("--stream is not supported for aes-cbc (use aes-gcm or chacha20)")
+	case "rsa":
+		return fmt.Errorf("--stream is not supported for rsa")
+	default:
+		return fmt.Errorf("unknown algorithm %q", algo)
+	}
 }
 
 // encryptBytes dispatches to the correct algorithm implementation.

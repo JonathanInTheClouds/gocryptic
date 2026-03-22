@@ -47,6 +47,7 @@ var (
 	dKeyEnv  string
 	dKeyFile string
 	dPrompt  bool
+	dStream  bool
 	dRSAKey  string
 	dOut     string
 	dRaw     bool
@@ -67,6 +68,8 @@ func init() {
 		"Environment variable containing the password (e.g. --key-env GCRY_PASS)")
 	decryptCmd.Flags().StringVar(&dKeyFile, "key-file", "",
 		"File containing the password (first line is used)")
+	decryptCmd.Flags().BoolVarP(&dStream, "stream", "s", false,
+		"Stream decryption — required for files encrypted with --stream")
 	decryptCmd.Flags().BoolVarP(&dPrompt, "prompt", "p", false,
 		"Prompt for password interactively (input hidden, like sudo)")
 	decryptCmd.Flags().StringVar(&dRSAKey, "rsa-key", "",
@@ -118,6 +121,38 @@ func runDecrypt(_ *cobra.Command, _ []string) error {
 		return decryptDirectory(dDir, algo)
 	}
 
+	// Stdin — always stream.
+	if dFile == "" && dInput == "" {
+		return decryptStreamFrom(os.Stdin, os.Stdout, algo)
+	}
+
+	// File with --stream flag.
+	if dFile != "" && dStream {
+		f, err := os.Open(dFile)
+		if err != nil {
+			return fmt.Errorf("opening %s: %w", dFile, err)
+		}
+		defer f.Close()
+		outPath := dOut
+		if outPath == "" {
+			if strings.HasSuffix(dFile, ".gcry") {
+				outPath = strings.TrimSuffix(dFile, ".gcry")
+			} else {
+				outPath = dFile + ".dec"
+			}
+		}
+		out, err := os.Create(outPath)
+		if err != nil {
+			return fmt.Errorf("creating %s: %w", outPath, err)
+		}
+		defer out.Close()
+		if err := decryptStreamFrom(f, out, algo); err != nil {
+			return err
+		}
+		success("Decrypted → %s", outPath)
+		return nil
+	}
+
 	ct, err := readCiphertext(dInput, dFile, dRaw)
 	if err != nil {
 		return err
@@ -129,6 +164,20 @@ func runDecrypt(_ *cobra.Command, _ []string) error {
 	}
 
 	return writeDecryptedOutput(pt, dFile, dOut)
+}
+
+// decryptStreamFrom reads a streaming packet from r and writes plaintext to w.
+func decryptStreamFrom(r io.Reader, w io.Writer, algo string) error {
+	switch algo {
+	case "auto", "":
+		return crypto.DecryptStreamAuto(r, w, dKey)
+	case "aes-gcm":
+		return crypto.DecryptStreamAESGCM(r, w, dKey)
+	case "chacha20":
+		return crypto.DecryptStreamChaCha20(r, w, dKey)
+	default:
+		return fmt.Errorf("streaming decryption not supported for algorithm %q", algo)
+	}
 }
 
 // decryptBytes dispatches to the correct algorithm.
