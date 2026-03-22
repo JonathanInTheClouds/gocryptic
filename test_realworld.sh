@@ -104,8 +104,8 @@ PUB="$TMPDIR/pub.pem"
 $BIN keygen --type rsa --bits 2048 --priv "$PRIV" --pub "$PUB" 2>/dev/null
 [[ -f "$PRIV" && -f "$PUB" ]] && pass "RSA key pair files created" || fail "RSA key pair missing"
 
-PRIV_PERMS=$(stat -f "%Mp%Lp" "$PRIV" 2>/dev/null || stat -c "%a" "$PRIV" 2>/dev/null)
-[[ "$PRIV_PERMS" == "0600" || "$PRIV_PERMS" == "600" ]] \
+PRIV_PERMS=$(stat -c "%a" "$PRIV" 2>/dev/null || stat -f "%OLp" "$PRIV" 2>/dev/null)
+[[ "$PRIV_PERMS" == "600" ]] \
   && pass "private key has mode 0600" || fail "private key permissions wrong (got: $PRIV_PERMS)"
 
 # ─────────────────────────────────────────────────────────────

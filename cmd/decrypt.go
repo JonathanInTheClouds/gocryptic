@@ -91,7 +91,9 @@ func runDecrypt(_ *cobra.Command, _ []string) error {
 	if dDir != "" {
 		sources++
 	}
-	if isStdin() {
+	// Only treat stdin as a source when no explicit flag was given.
+	// In CI and scripts, stdin is always a pipe even when --input is set.
+	if sources == 0 && isStdin() {
 		sources++
 	}
 	if sources == 0 {
